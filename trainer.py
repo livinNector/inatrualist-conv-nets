@@ -37,7 +37,7 @@ def transform_resize(image_size):
 
 class InaturalistDataModule(pl.LightningDataModule):
     def __init__(
-        self, data_dir, val_size=0.2, augment=True, image_size=244, batch_size=32
+        self, data_dir, val_size=0.2, augment=True, image_size=224, batch_size=32
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -159,9 +159,11 @@ class BaseModule(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
 
-def train(model, data_dir, augment, n_epochs, run_name=None):
+def train(
+    model, data_dir, augment, n_epochs, wandb_project=None, run_name=None, test=False
+):
     torch.cuda.empty_cache()
-    wandb_logger = WandbLogger(log_model="all")
+    wandb_logger = WandbLogger(log_model="all", project=wandb_project)
     wandb_logger.experiment.name = run_name + "-" + wandb_logger.experiment.name
     data_module = InaturalistDataModule(
         data_dir=data_dir, val_size=0.2, augment=augment, image_size=224, batch_size=32
@@ -179,3 +181,5 @@ def train(model, data_dir, augment, n_epochs, run_name=None):
         precision=16 if torch.cuda.is_available() else 32,
     )
     trainer.fit(model, datamodule=data_module)
+    if test:
+        trainer.test(model, datamodule=data_module)
